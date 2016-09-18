@@ -13,3 +13,5 @@ runs at believably-human speeds.
   (typewriter "\nI'm package-demo.el!")
   (M-x #'save-buffer))
 ```
+
+![meta][meta-demo.gif]
