@@ -14,4 +14,4 @@ runs at believably-human speeds.
   (M-x #'save-buffer))
 ```
 
-![meta][meta-demo.gif]
+![meta](meta-demo.gif)
