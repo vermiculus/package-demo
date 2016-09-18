@@ -34,8 +34,6 @@
 
 ;;; Code:
 
-(require 'cl-lib)
-
 (defvar package-demo-actions (make-hash-table))
 (defvar package-demo-demos (make-hash-table))
 (defvar package-demo-default-arguments
@@ -92,11 +90,11 @@
 (package-demo-define-action pause (seconds)
   (sit-for seconds))
 
-(package-demo-define-action M-x (func &rest keys)
+(package-demo-define-action M-x (func &optional args &rest keys)
   ;; cannot handle prefix arguments or (interactive) forms
-  (funcall (eval func)))
+  (apply (eval func) (eval args)))
 
-(package-demo-define-action insert (text)
+(package-demo-define-action insert (text &rest keys)
   (insert text))
 
 (package-demo-define-action typewriter (text &rest keys)
