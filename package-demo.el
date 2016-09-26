@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2016  Sean Allred
 
-;; Author: Sean Allred <sean@SMBP.local>
+;; Author: Sean Allred <code@seanallred.com>
 ;; Keywords: tools
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -34,8 +34,9 @@
 
 ;;; Code:
 
+(require 'dash)
+
 (defvar package-demo-actions (make-hash-table))
-(defvar package-demo-demos (make-hash-table))
 (defvar package-demo-default-arguments
   '((typewriter :speed 20)))
 
@@ -48,36 +49,37 @@
   (puthash action `(lambda ,args ,@body) package-demo-actions)
   package-demo-actions)
 
-(defun package-demo-do-keys (keys)
-  (message "And here's where I'd press %S..." keys))
+(defun package-demo-do (action &rest args)
+  (when-let (func (gethash action package-demo-actions))
+    (apply func args)))
 
-(defun package-demo-do (action &optional args)
-  (if action
-      (let ((func (gethash action package-demo-actions)))
-        (unless func (error "No such action: %S" action))
-        (apply func args))
-    (package-demo-do-keys args)))
+(defun package-demo-do- (action &optional args)
+  (apply #'package-demo-do action args))
 
 (defun package-demo--verify-form (form)
-  "Ensure all forms in FORM can be run."
-  (let (e)
-    (while form
-      (setq e (car form))
-      (when (consp e)
-        (unless (gethash (car e) package-demo-actions)
-          (user-error "No such action: %S" (car e))))
-      (setq form (cdr form)))))
+  "Ensure all forms in FORM can be run."  ;
+  (dolist (e form)
+    (let ((action (car e)))
+      (unless (gethash action package-demo-actions)
+        (user-error "No such action: %S" action)))))
 
 (defun package-demo--run-demo (form)
   "Run FORM."
-  (let (action args)
-    (while form
-      (setq e (car form))
-      (when (consp e)
-        (setq action (car e)
-              args (cdr e)))
-      (package-demo-do action (if action args e))
-      (setq form (cdr form)))))
+  (dolist (e form)
+    (let ((action (car e)) (args (cdr e)))
+      (apply #'package-demo-do action args))))
+
+(defun package-demo--fire-event (event)
+  (execute-kbd-macro (vector event)))
+
+(defun package-demo--fire-key (key)
+  (execute-kbd-macro (kbd key)))
+
+(defun package-demo--fire-all-keys (keys speed)
+  (loop for event being the elements of (kbd keys) do
+        (execute-kbd-macro (vector event))
+        (redisplay)
+        (sit-for 0.5)))
 
 (defmacro package-demo-define-demo (demo &rest body)
   "Define a function DEMO that executes BODY."
@@ -87,22 +89,58 @@
      (interactive)
      (package-demo--run-demo ',body)))
 
-(package-demo-define-action pause (seconds)
-  (sit-for seconds))
+(defun package-demo-action:pause (seconds &rest keys)
+  (sit-for seconds)
+  (when (plist-member keys :callback)
+    (run-with-timer 1 nil #'package-demo--run-demo
+                    (plist-get keys :callback))))
 
-(package-demo-define-action M-x (func &optional args &rest keys)
+(defun package-demo-action:M-x (func &rest keys)
   ;; cannot handle prefix arguments or (interactive) forms
-  (apply (eval func) (eval args)))
+  (run-with-timer
+   1 nil #'package-demo-action:M-x:insert-command
+   func (plist-get keys :callback))
+  (call-interactively #'execute-extended-command))
+
+(defun package-demo-action:M-x:insert-command (func callback)
+  (loop for c being the elements of (symbol-name func) do
+        (execute-kbd-macro (vector c))
+        (sit-for 0.05))
+  (sit-for 1)
+  (when callback (run-with-timer 1 nil #'package-demo--run-demo callback))
+  (execute-kbd-macro (kbd "RET")))
+
+(dolist (e '(M-x pause))
+  (puthash e (intern (concat "package-demo-action:" (symbol-name e)))
+           package-demo-actions))
+
+(package-demo-define-action kbd (key &rest keys)
+  ;; cannot handle prefix arguments or (interactive) forms
+  (package-demo--fire-key key))
 
 (package-demo-define-action insert (text &rest keys)
   (insert text))
 
+(require 'seq)
 (package-demo-define-action typewriter (text &rest keys)
   (let ((speed (package-demo-get-argument 'typewriter :speed keys)))
-    (while (not (string-equal "" text))
-      (insert (substring text 0 1))
-      (sit-for (/ 1.0 speed))
-      (setq text (substring text 1)))))
+    (seq-doseq (c text)
+      (insert-char c)
+      (sit-for (/ 1.0 speed)))))
+
+(package-demo-define-action typewriter-key-events (events &rest keys)
+  (package-demo--typewriter-key-events-helper
+   (-flatten (mapcar #'listify-key-sequence events))
+   (package-demo-get-argument 'typewriter :speed keys)))
+
+(defun package-demo--typewriter-key-events-helper (raw-events speed)
+  (when raw-events
+    (package-demo--fire-event (car raw-events))
+    (run-with-idle-timer
+     (/ 1.0 speed) nil
+     #'package-demo--typewriter-key-events-helper
+     (cdr raw-events)
+     speed)))
 
 (provide 'package-demo)
 ;;; package-demo.el ends here
