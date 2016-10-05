@@ -3,6 +3,7 @@
 ;; Copyright (C) 2016  Sean Allred
 
 ;; Author: Sean Allred <code@seanallred.com>
+;; Package-Requires: ((cl-lib "0.5") (dash "2.13.0") (seq "2.16"))
 ;; Keywords: tools
 
 ;; This program is free software; you can redistribute it and/or modify
