@@ -36,6 +36,7 @@
 
 (require 'cl-lib)
 (require 'dash)
+(require 'seq)
 
 (defvar package-demo-actions (make-hash-table))
 (defvar package-demo-default-arguments
@@ -122,7 +123,6 @@
 (package-demo-define-action insert (text &rest keys)
   (insert text))
 
-(require 'seq)
 (package-demo-define-action typewriter (text &rest keys)
   (let ((speed (package-demo-get-argument 'typewriter :speed keys)))
     (seq-doseq (c text)
