@@ -34,6 +34,7 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'dash)
 
 (defvar package-demo-actions (make-hash-table))
@@ -76,10 +77,10 @@
   (execute-kbd-macro (kbd key)))
 
 (defun package-demo--fire-all-keys (keys speed)
-  (loop for event being the elements of (kbd keys) do
-        (execute-kbd-macro (vector event))
-        (redisplay)
-        (sit-for 0.5)))
+  (cl-loop for event being the elements of (kbd keys) do
+           (execute-kbd-macro (vector event))
+           (redisplay)
+           (sit-for 0.5)))
 
 (defmacro package-demo-define-demo (demo &rest body)
   "Define a function DEMO that executes BODY."
@@ -103,9 +104,9 @@
   (call-interactively #'execute-extended-command))
 
 (defun package-demo-action:M-x:insert-command (func callback)
-  (loop for c being the elements of (symbol-name func) do
-        (execute-kbd-macro (vector c))
-        (sit-for 0.05))
+  (cl-loop for c being the elements of (symbol-name func) do
+           (execute-kbd-macro (vector c))
+           (sit-for 0.05))
   (sit-for 1)
   (when callback (run-with-timer 1 nil #'package-demo--run-demo callback))
   (execute-kbd-macro (kbd "RET")))
