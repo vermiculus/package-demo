@@ -143,4 +143,7 @@
      speed)))
 
 (provide 'package-demo)
+;; Local Variables:
+;; indent-tabs-mode: nil
+;; End:
 ;;; package-demo.el ends here
